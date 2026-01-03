@@ -173,6 +173,27 @@ local function build_subvolume_path(subvol_id, subvols, mounts)
     
     return nil
 end
+--- Get the device the given path is mounted from
+--- @param path string The path to find the device for
+--- @param mounts table Map of subvol_path -> target
+--- @return string | nil
+local function get_device_for_path(current_dir, mounts)
+    local best_device = nil
+    local best_len = -1
+
+    for device, mnt in pairs(mounts) do
+        if #mnt > best_len and current_dir:sub(1, #mnt) == mnt then
+            local next_char = current_dir:sub(#mnt + 1, #mnt + 1)
+            if next_char == "/" or next_char == "" then
+              best_len = #mnt
+              best_device = device
+            end
+        end
+    end
+
+    return best_device
+end
+
 
 --- Special error type to indicate we're in a snapshot
 local SNAPSHOT_ERROR = "IN_SNAPSHOT"
@@ -267,33 +288,16 @@ local function get_btrfs_snapshots(current_dir)
     -- Step 6: Calculate current directory's path within the subvolume
     -- Use the mount info we already have
     local current_subvol_path = current_subvol.path
-    local mount_point = mounts[current_subvol_path]
+    local subvol_mount_point = mounts[current_subvol_path]
     
-    if not mount_point then
+    if not subvol_mount_point then
         return nil, "Could not find mount point for current subvolume"
     end
     
-    -- Get absolute path of current directory
-    output = Command("realpath")
-        :arg(current_dir)
-        :stdout(Command.PIPED)
-        :stderr(Command.PIPED)
-        :output()
-    
-    if not output or not output.status.success then
-        return nil, "Could not resolve absolute path"
-    end
-    
-    local abs_path = output.stdout:match("^[^\n]*")
-    
-    -- Calculate relative path from mount point
-    local path_in_subvol = ""
-    if abs_path:sub(1, #mount_point) == mount_point then
-        path_in_subvol = abs_path:sub(#mount_point + 1)
-        if path_in_subvol:sub(1, 1) == "/" then
-            path_in_subvol = path_in_subvol:sub(2)
-        end
-    end
+    local device = get_device_for_path(current_dir,mounts)
+    local mount_point = mounts[device]
+    local path_on_device = device .. current_dir:sub(#mount_point + 1)
+    local path_in_subvol = path_on_device:sub(#current_subvol_path + 1)
     
     -- Step 7: Get creation times in parallel
     local snapshot_jobs = {}
@@ -301,7 +305,7 @@ local function get_btrfs_snapshots(current_dir)
         -- Build full path to same location in snapshot
         local dir_path = info.base_path
         if path_in_subvol ~= "" then
-            dir_path = dir_path .. "/" .. path_in_subvol
+            dir_path = dir_path .. path_in_subvol
         end
         
         table.insert(snapshot_jobs, {
@@ -592,3 +596,5 @@ function M:scroll() end
 function M:touch() end
 
 return M
+
+
