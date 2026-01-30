@@ -4,7 +4,8 @@ A **BTRFS snapshot browser** for Yazi. Lists all snapshots of the current direct
 
 - **Works with any snapshot tool** — discovers snapshots using only BTRFS filesystem metadata and mount information. No assumptions about directory layout, naming conventions, or specific tools like Snapper or btrbk.
 - **Linux only** — requires `btrfs-progs` and `util-linux`.
-- **[Demo video placeholder]**
+
+https://github.com/user-attachments/assets/7356b17c-3682-4df2-b6e5-18aaac97ca06
 
 ## Installation
 
