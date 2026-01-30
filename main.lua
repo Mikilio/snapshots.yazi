@@ -488,7 +488,6 @@ function M:entry(job)
 	subscribe()
 
 	local tx1, rx1 = ya.chan("mpsc")
-	local tx2, rx2 = ya.chan("mpsc")
 	function producer()
 		while true do
 			local cand = self.keys[ya.which { cands = self.keys, silent = true }] or { run = {} }
@@ -506,7 +505,6 @@ function M:entry(job)
 		repeat
 			local run = rx1:recv()
 			if run == "quit" then
-				tx2:send(run)
 				break
 			elseif run == "up" then
 				update_cursor(-1)
@@ -514,8 +512,6 @@ function M:entry(job)
 				update_cursor(1)
 			elseif run == "enter" then
 				handle_enter()
-			else
-				tx2:send(run)
 			end
 		until not run
 	end
